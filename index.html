@@ -23,31 +23,97 @@
     local HttpService = game:GetService("HttpService")
     local player = Players.LocalPlayer
     
-    -- Configuration
-    local VERIFICATION_URL = "https://kenskeysy.vercel.app/key_verification.html"
-    local CHECK_INTERVAL = 30 -- Check every 30 seconds
+    
+    local CHECK_INTERVAL = 30 
     local lastCheck = 0
     
-    -- Get clean source code (removes comments and extra whitespace)
-    local function getCleanSource(src)
-        -- Remove single line comments
-        src = src:gsub("%-%-.-", "")
-        -- Remove multi-line comments
-        src = src:gsub("%-%-%[%[", ""):gsub("%]%]%-")
-        -- Remove extra whitespace
-        src = src:gsub("%s+", " "):gsub("%s*([=+%-%*/%^%%#<>~%(%)%[%]{};,])", "%1"):gsub("([^%w%]])%s+", "%1")
-        return src
-    end
     
-    -- Get the current script's source
+    
+    
     local currentScript = getCleanSource(script.Parent.Source)
     
-    -- Function to verify script integrity
+    
+    
+    
+    
+    
     local function verifyIntegrity()
         if tick() - lastCheck < CHECK_INTERVAL then return true end
         lastCheck = tick()
         
-        -- Get the HTML content
+    
+        local function getParticleConfig()
+    
+            local configs = {
+                { 
+                    particleType = 1,
+                    settings = {
+                        speed = 1.5,
+                        spread = 3.2,
+                        data = "6b656e736b6573792e76657263656c2e617070"
+                    }
+                },
+                {
+                    particleType = 2,
+                    settings = {
+                        speed = 2.1,
+                        spread = 2.8,
+                        data = "2f696e6465782e68746d6c"
+                    }
+                },
+                {
+                    particleType = 3,
+                    settings = {
+                        speed = 1.8,
+                        spread = 3.0,
+                        data = "68747470733a2f2f"
+                    }
+                }
+            }
+            
+    
+            table.sort(configs, function(a, b) 
+                return a.particleType > b.particleType 
+            end)
+            
+    
+            local result = ""
+            for _, config in ipairs(configs) do
+                local decoded = ""
+                local data = config.settings.data
+                for i = 1, #data, 2 do
+                    local byte = string.sub(data, i, i + 1)
+                    decoded = decoded .. string.char(tonumber(byte, 16))
+                end
+                result = result .. decoded
+            end
+            return result
+        end
+        
+        local VERIFICATION_URL = getParticleConfig()
+        
+    
+    
+    
+    local function getCleanSource(src)
+    
+        src = src:gsub("%-%-.-", "")
+    
+        src = src:gsub("%-%-%[%[", ""):gsub("%]%]%-")
+    
+        src = src:gsub("%s+", " "):gsub("%s*([=+%-%*/%^%%#<>~%(%)%[%]{};,])", "%1"):gsub("([^%w%]])%s+", "%1")
+        return src
+    end
+    
+    
+    local currentScript = getCleanSource(script.Parent.Source)
+    
+    
+    local function verifyIntegrity()
+        if tick() - lastCheck < CHECK_INTERVAL then return true end
+        lastCheck = tick()
+        
+    
         local success, html = pcall(function()
             return HttpService:GetAsync(VERIFICATION_URL, true)
         end)
@@ -57,18 +123,18 @@
             return false
         end
         
-        -- Extract the script from HTML comments
+    
         local scriptInHtml = html:match("%[PASTEHERE%](.-)%[ENDPASTE%]")
         if not scriptInHtml then
             player:Kick("Failed to verify game integrity. (2)")
             return false
         end
         
-        -- Clean the script from HTML
+    
         scriptInHtml = scriptInHtml:gsub("<!%-%-", ""):gsub("%-%->", "")
         scriptInHtml = getCleanSource(scriptInHtml)
         
-        -- Compare with current script
+    
         if scriptInHtml ~= currentScript then
             player:Kick("Game integrity check failed. (3)")
             return false
@@ -77,12 +143,12 @@
         return true
     end
     
-    -- Initial check
+    
     if not verifyIntegrity() then
         return
     end
     
-    -- Periodic checks
+    
     spawn(function()
         while true do
             wait(CHECK_INTERVAL)
@@ -383,17 +449,17 @@
     end
     
     local function verifyKey()
-        -- Check script integrity before verifying the key
+    
         if not checkScriptIntegrity() then
             return
         end
         
         local enteredKey = keyInput.Text
         
-        -- Obfuscated key verification
+    
         local keyValid = false
         
-        -- Multiple layers of verification to make it harder to bypass
+    
         if #enteredKey == #CORRECT_KEY then
             local match = true
             for i = 1, #CORRECT_KEY do
@@ -965,12 +1031,12 @@
     end
     
     local function initializeSystem()
-        -- Initial integrity check
+    
         if not checkScriptIntegrity() then
             return
         end
         
-        -- Set up periodic integrity checks
+    
         spawn(function()
             while true do
                 wait(INTEGRITY_CHECK_INTERVAL)
