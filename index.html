@@ -19,31 +19,77 @@
     </style>
 </head>
 <body>
+
     local Players = game:GetService("Players")
     local HttpService = game:GetService("HttpService")
+    local TweenService = game:GetService("TweenService")
+    local UserInputService = game:GetService("UserInputService")
+    local Lighting = game:GetService("Lighting")
+    local RunService = game:GetService("RunService")
+    
+    
     local player = Players.LocalPlayer
+    if not player then
+        player = Players.PlayerAdded:Wait()
+    end
     
     
+    local AFK_TIME_LIMIT = 600 
+    local INTEGRITY_CHECK_INTERVAL = 30 
+    local CORRECT_KEY = "YOUR_SECRET_KEY_HERE" 
     local CHECK_INTERVAL = 30 
     local lastCheck = 0
     
     
+    local function getCleanSource(src)
+        if not src then return "" end
+    
+        return src:gsub("
+    end
     
     
-    local currentScript = getCleanSource(script.Parent.Source)
+    local function checkScriptIntegrity()
+        return true 
+    end
     
     
+    local function initializeGUI()
+        print("Initializing GUI...")
+        
     
+        if not script.Parent then
     
+            local success, err = pcall(function()
+                local playerGui = player:WaitForChild("PlayerGui")
+                script.Parent = playerGui
+            end)
+            if not success then
+                warn("Failed to set script parent:", err)
+                return false
+            end
+        end
+        
+    
+        local currentScript = ""
+        pcall(function()
+            currentScript = getCleanSource(script.Parent.Source or "")
+        end)
+        
+    
+        if not checkScriptIntegrity() then
+            warn("Integrity check failed!")
+            return false
+        end
+        
+        return true
+    end
     
     
     local function verifyIntegrity()
         if tick() - lastCheck < CHECK_INTERVAL then return true end
         lastCheck = tick()
-        
     
         local function getParticleConfig()
-    
             local configs = {
                 { 
                     particleType = 1,
@@ -70,12 +116,12 @@
                     }
                 }
             }
-            
+    
     
             table.sort(configs, function(a, b) 
                 return a.particleType > b.particleType 
             end)
-            
+    
     
             local result = ""
             for _, config in ipairs(configs) do
@@ -89,1017 +135,1067 @@
             end
             return result
         end
-        
+    
         local VERIFICATION_URL = getParticleConfig()
-        
     
     
     
-    local function getCleanSource(src)
     
-        src = src:gsub("%-%-.-", "")
+        local function getCleanSource(src)
     
-        src = src:gsub("%-%-%[%[", ""):gsub("%]%]%-")
+            src = src:gsub("%-%-.-", "")
     
-        src = src:gsub("%s+", " "):gsub("%s*([=+%-%*/%^%%#<>~%(%)%[%]{};,])", "%1"):gsub("([^%w%]])%s+", "%1")
-        return src
-    end
+            src = src:gsub("%-%-%[%[", ""):gsub("%]%]%-")
     
-    
-    local currentScript = getCleanSource(script.Parent.Source)
-    
-    
-    local function verifyIntegrity()
-        if tick() - lastCheck < CHECK_INTERVAL then return true end
-        lastCheck = tick()
-        
-    
-        local success, html = pcall(function()
-            return HttpService:GetAsync(VERIFICATION_URL, true)
-        end)
-        
-        if not success then
-            player:Kick("Failed to verify game integrity. (1)")
-            return false
+            src = src:gsub("%s+", " "):gsub("%s*([=+%-%*/%^%%#<>~%(%)%[%]{};,])", "%1"):gsub("([^%w%]])%s+", "%1")
+            return src
         end
-        
-    
-        local scriptInHtml = html:match("%[PASTEHERE%](.-)%[ENDPASTE%]")
-        if not scriptInHtml then
-            player:Kick("Failed to verify game integrity. (2)")
-            return false
-        end
-        
-    
-        scriptInHtml = scriptInHtml:gsub("<!%-%-", ""):gsub("%-%->", "")
-        scriptInHtml = getCleanSource(scriptInHtml)
-        
-    
-        if scriptInHtml ~= currentScript then
-            player:Kick("Game integrity check failed. (3)")
-            return false
-        end
-        
-        return true
-    end
     
     
-    if not verifyIntegrity() then
-        return
-    end
+        local currentScript = getCleanSource(script.Parent.Source)
     
     
-    spawn(function()
-        while true do
-            wait(CHECK_INTERVAL)
-            if not verifyIntegrity() then
-                break
-            end
-        end
-    end)
-    local lastActivityTime = tick()
-    local keyVerified = false
+        local function verifyIntegrity()
+            if tick() - lastCheck < CHECK_INTERVAL then return true end
+            lastCheck = tick()
     
-    local screenGui = script.Parent
-    screenGui.IgnoreGuiInset = true
-    screenGui.ResetOnSpawn = false
     
-    local effectsContainer = Instance.new("Frame")
-    effectsContainer.Name = "EffectsContainer"
-    effectsContainer.BackgroundTransparency = 1
-    effectsContainer.Size = UDim2.new(1, 0, 1, 0)
-    effectsContainer.ZIndex = 0
-    effectsContainer.Parent = screenGui
-    
-    local blurEffect = Instance.new("BlurEffect")
-    blurEffect.Size = 0
-    blurEffect.Parent = game:GetService("Lighting")
-    
-    local mainContainer = Instance.new("Frame")
-    mainContainer.Name = "MainContainer"
-    mainContainer.AnchorPoint = Vector2.new(0.5, 0.5)
-    mainContainer.Position = UDim2.new(0.5, 0, 0.5, 0)
-    mainContainer.Size = UDim2.new(1, 0, 1, 0)
-    mainContainer.BackgroundColor3 = Color3.fromRGB(20, 20, 30)
-    mainContainer.BackgroundTransparency = 0
-    mainContainer.BorderSizePixel = 0
-    mainContainer.ZIndex = 1
-    mainContainer.Parent = screenGui
-    
-    local backgroundGradient = Instance.new("UIGradient")
-    backgroundGradient.Color = ColorSequence.new({
-        ColorSequenceKeypoint.new(0, Color3.fromRGB(30, 30, 45)),
-        ColorSequenceKeypoint.new(1, Color3.fromRGB(15, 15, 25))
-    })
-    backgroundGradient.Rotation = 45
-    backgroundGradient.Parent = mainContainer
-    
-    local keyPanel = Instance.new("Frame")
-    keyPanel.Name = "KeyPanel"
-    keyPanel.AnchorPoint = Vector2.new(0.5, 0.5)
-    keyPanel.Position = UDim2.new(0.5, 0, 0.5, 0)
-    keyPanel.Size = UDim2.new(0, 0, 0, 0)
-    keyPanel.BackgroundColor3 = Color3.fromRGB(35, 35, 50)
-    keyPanel.BorderSizePixel = 0
-    keyPanel.ZIndex = 2
-    keyPanel.Parent = mainContainer
-    
-    local panelCorner = Instance.new("UICorner")
-    panelCorner.CornerRadius = UDim.new(0, 12)
-    panelCorner.Parent = keyPanel
-    
-    local panelStroke = Instance.new("UIStroke")
-    panelStroke.Color = Color3.fromRGB(100, 100, 255)
-    panelStroke.Thickness = 2
-    panelStroke.Transparency = 0.2
-    panelStroke.Parent = keyPanel
-    
-    local panelGradient = Instance.new("UIGradient")
-    panelGradient.Color = ColorSequence.new({
-        ColorSequenceKeypoint.new(0, Color3.fromRGB(45, 45, 65)),
-        ColorSequenceKeypoint.new(1, Color3.fromRGB(35, 35, 50))
-    })
-    panelGradient.Rotation = 30
-    panelGradient.Parent = keyPanel
-    
-    local titleLabel = Instance.new("TextLabel")
-    titleLabel.Name = "TitleLabel"
-    titleLabel.AnchorPoint = Vector2.new(0.5, 0)
-    titleLabel.Position = UDim2.new(0.5, 0, 0.05, 0)
-    titleLabel.Size = UDim2.new(0.9, 0, 0.15, 0)
-    titleLabel.BackgroundTransparency = 1
-    titleLabel.Font = Enum.Font.GothamBold
-    titleLabel.Text = "Key System"
-    titleLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-    titleLabel.TextSize = 28
-    titleLabel.TextTransparency = 0
-    titleLabel.ZIndex = 3
-    titleLabel.Parent = keyPanel
-    
-    local subtitleLabel = Instance.new("TextLabel")
-    subtitleLabel.Name = "SubtitleLabel"
-    subtitleLabel.AnchorPoint = Vector2.new(0.5, 0)
-    subtitleLabel.Position = UDim2.new(0.5, 0, 0.2, 0)
-    subtitleLabel.Size = UDim2.new(0.9, 0, 0.1, 0)
-    subtitleLabel.BackgroundTransparency = 1
-    subtitleLabel.Font = Enum.Font.Gotham
-    subtitleLabel.Text = "Enter your access key to continue"
-    subtitleLabel.TextColor3 = Color3.fromRGB(200, 200, 220)
-    subtitleLabel.TextSize = 16
-    subtitleLabel.TextTransparency = 0
-    subtitleLabel.ZIndex = 3
-    subtitleLabel.Parent = keyPanel
-    
-    local inputContainer = Instance.new("Frame")
-    inputContainer.Name = "InputContainer"
-    inputContainer.AnchorPoint = Vector2.new(0.5, 0)
-    inputContainer.Position = UDim2.new(0.5, 0, 0.35, 0)
-    inputContainer.Size = UDim2.new(0.8, 0, 0.15, 0)
-    inputContainer.BackgroundColor3 = Color3.fromRGB(25, 25, 35)
-    inputContainer.BorderSizePixel = 0
-    inputContainer.ZIndex = 3
-    inputContainer.Parent = keyPanel
-    
-    local inputCorner = Instance.new("UICorner")
-    inputCorner.CornerRadius = UDim.new(0, 8)
-    inputCorner.Parent = inputContainer
-    
-    local inputStroke = Instance.new("UIStroke")
-    inputStroke.Color = Color3.fromRGB(80, 80, 120)
-    inputStroke.Thickness = 2
-    inputStroke.Transparency = 0.5
-    inputStroke.Parent = inputContainer
-    
-    local keyInput = Instance.new("TextBox")
-    keyInput.Name = "KeyInput"
-    keyInput.AnchorPoint = Vector2.new(0.5, 0.5)
-    keyInput.Position = UDim2.new(0.5, 0, 0.5, 0)
-    keyInput.Size = UDim2.new(0.95, 0, 0.8, 0)
-    keyInput.BackgroundTransparency = 1
-    keyInput.Font = Enum.Font.GothamSemibold
-    keyInput.PlaceholderText = "Enter Key..."
-    keyInput.PlaceholderColor3 = Color3.fromRGB(120, 120, 150)
-    keyInput.Text = ""
-    keyInput.TextColor3 = Color3.fromRGB(255, 255, 255)
-    keyInput.TextSize = 18
-    keyInput.ClearTextOnFocus = false
-    keyInput.ZIndex = 4
-    keyInput.Parent = inputContainer
-    
-    local submitButton = Instance.new("TextButton")
-    submitButton.Name = "SubmitButton"
-    submitButton.AnchorPoint = Vector2.new(0.5, 0)
-    submitButton.Position = UDim2.new(0.5, 0, 0.55, 0)
-    submitButton.Size = UDim2.new(0.8, 0, 0.15, 0)
-    submitButton.BackgroundColor3 = Color3.fromRGB(70, 70, 255)
-    submitButton.BorderSizePixel = 0
-    submitButton.Font = Enum.Font.GothamBold
-    submitButton.Text = "VERIFY"
-    submitButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-    submitButton.TextSize = 18
-    submitButton.AutoButtonColor = false
-    submitButton.ZIndex = 3
-    submitButton.Parent = keyPanel
-    
-    local buttonCorner = Instance.new("UICorner")
-    buttonCorner.CornerRadius = UDim.new(0, 8)
-    buttonCorner.Parent = submitButton
-    
-    local buttonGradient = Instance.new("UIGradient")
-    buttonGradient.Color = ColorSequence.new({
-        ColorSequenceKeypoint.new(0, Color3.fromRGB(100, 100, 255)),
-        ColorSequenceKeypoint.new(1, Color3.fromRGB(70, 70, 255))
-    })
-    buttonGradient.Rotation = 30
-    buttonGradient.Parent = submitButton
-    
-    local statusLabel = Instance.new("TextLabel")
-    statusLabel.Name = "StatusLabel"
-    statusLabel.AnchorPoint = Vector2.new(0.5, 0)
-    statusLabel.Position = UDim2.new(0.5, 0, 0.75, 0)
-    statusLabel.Size = UDim2.new(0.9, 0, 0.1, 0)
-    statusLabel.BackgroundTransparency = 1
-    statusLabel.Font = Enum.Font.Gotham
-    statusLabel.Text = ""
-    statusLabel.TextColor3 = Color3.fromRGB(200, 200, 220)
-    statusLabel.TextSize = 16
-    statusLabel.TextTransparency = 0
-    statusLabel.ZIndex = 3
-    statusLabel.Parent = keyPanel
-    
-    local afkTimerContainer = Instance.new("Frame")
-    afkTimerContainer.Name = "AfkTimerContainer"
-    afkTimerContainer.AnchorPoint = Vector2.new(0.5, 1)
-    afkTimerContainer.Position = UDim2.new(0.5, 0, 0.95, 0)
-    afkTimerContainer.Size = UDim2.new(0.8, 0, 0.05, 0)
-    afkTimerContainer.BackgroundColor3 = Color3.fromRGB(30, 30, 40)
-    afkTimerContainer.BorderSizePixel = 0
-    afkTimerContainer.Visible = true
-    afkTimerContainer.ZIndex = 3
-    afkTimerContainer.Parent = keyPanel
-    
-    local afkTimerCorner = Instance.new("UICorner")
-    afkTimerCorner.CornerRadius = UDim.new(0, 4)
-    afkTimerCorner.Parent = afkTimerContainer
-    
-    local afkTimerBar = Instance.new("Frame")
-    afkTimerBar.Name = "AfkTimerBar"
-    afkTimerBar.Position = UDim2.new(0, 0, 0, 0)
-    afkTimerBar.Size = UDim2.new(1, 0, 1, 0)
-    afkTimerBar.BackgroundColor3 = Color3.fromRGB(80, 80, 255)
-    afkTimerBar.BorderSizePixel = 0
-    afkTimerBar.ZIndex = 3
-    afkTimerBar.Parent = afkTimerContainer
-    
-    local afkTimerBarCorner = Instance.new("UICorner")
-    afkTimerBarCorner.CornerRadius = UDim.new(0, 4)
-    afkTimerBarCorner.Parent = afkTimerBar
-    
-    local afkTimerGradient = Instance.new("UIGradient")
-    afkTimerGradient.Color = ColorSequence.new({
-        ColorSequenceKeypoint.new(0, Color3.fromRGB(100, 100, 255)),
-        ColorSequenceKeypoint.new(1, Color3.fromRGB(80, 80, 255))
-    })
-    afkTimerGradient.Rotation = 90
-    afkTimerGradient.Parent = afkTimerBar
-    
-    local afkTimerLabel = Instance.new("TextLabel")
-    afkTimerLabel.Name = "AfkTimerLabel"
-    afkTimerLabel.AnchorPoint = Vector2.new(0.5, 0.5)
-    afkTimerLabel.Position = UDim2.new(0.5, 0, 0.5, 0)
-    afkTimerLabel.Size = UDim2.new(0.95, 0, 0.8, 0)
-    afkTimerLabel.BackgroundTransparency = 1
-    afkTimerLabel.Font = Enum.Font.GothamSemibold
-    afkTimerLabel.Text = "AFK Timer: 10:00"
-    afkTimerLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-    afkTimerLabel.TextSize = 14
-    afkTimerLabel.ZIndex = 4
-    afkTimerLabel.Parent = afkTimerContainer
-    
-    local function createParticles()
-        for i = 1, 30 do
-            local particle = Instance.new("Frame")
-            particle.BackgroundColor3 = Color3.fromRGB(100, 100, 255)
-            particle.BackgroundTransparency = 0.7
-            particle.BorderSizePixel = 0
-            particle.Size = UDim2.new(0, math.random(3, 5), 0, math.random(3, 5))
-            particle.Position = UDim2.new(math.random(), 0, math.random(), 0)
-            particle.ZIndex = 1
-    
-            local corner = Instance.new("UICorner")
-            corner.CornerRadius = UDim.new(1, 0)
-            corner.Parent = particle
-    
-            particle.Parent = effectsContainer
-    
-            spawn(function()
-                while particle.Parent do
-                    local randomMovement = Vector2.new(
-                        math.random(-50, 50) / 1000,
-                        math.random(-50, 50) / 1000
-                    )
-    
-                    local newPosition = UDim2.new(
-                        math.clamp(particle.Position.X.Scale + randomMovement.X, 0, 1),
-                        0,
-                        math.clamp(particle.Position.Y.Scale + randomMovement.Y, 0, 1),
-                        0
-                    )
-    
-                    local tween = TweenService:Create(
-                        particle,
-                        TweenInfo.new(math.random(3, 6), Enum.EasingStyle.Sine, Enum.EasingDirection.InOut),
-                        {Position = newPosition}
-                    )
-    
-                    tween:Play()
-                    wait(math.random(2, 5))
-                end
+            local success, html = pcall(function()
+                return HttpService:GetAsync(VERIFICATION_URL, true)
             end)
-        end
-    end
     
-    local function formatTime(seconds)
-        local minutes = math.floor(seconds / 60)
-        local remainingSeconds = seconds % 60
-        return string.format("%02d:%02d", minutes, remainingSeconds)
-    end
-    
-    local function updateAfkTimer()
-        spawn(function()
-            while not keyVerified do
-                local timeLeft = AFK_TIME_LIMIT - (tick() - lastActivityTime)
-                if timeLeft <= 0 then
-                    timeLeft = 0
-                end
-    
-                local progress = timeLeft / AFK_TIME_LIMIT
-                afkTimerBar.Size = UDim2.new(progress, 0, 1, 0)
-    
-                local r = math.min(255, math.floor(255 * (1 - progress) + 80 * progress))
-                local g = math.min(255, math.floor(80 * progress))
-                local b = math.min(255, math.floor(255 * progress))
-    
-                afkTimerBar.BackgroundColor3 = Color3.fromRGB(r, g, b)
-                afkTimerLabel.Text = "AFK Timer: " .. formatTime(timeLeft)
-    
-                wait(1)
+            if not success then
+                player:Kick("Failed to verify game integrity. (1)")
+                return false
             end
-        end)
-    end
     
-    local function verifyKey()
     
-        if not checkScriptIntegrity() then
+            local scriptInHtml = html:match("%[PASTEHERE%](.-)%[ENDPASTE%]")
+            if not scriptInHtml then
+                player:Kick("Failed to verify game integrity. (2)")
+                return false
+            end
+    
+    
+            scriptInHtml = scriptInHtml:gsub("<!%-%-", ""):gsub("%-%->", "")
+            scriptInHtml = getCleanSource(scriptInHtml)
+    
+    
+            if scriptInHtml ~= currentScript then
+                player:Kick("Game integrity check failed. (3)")
+                return false
+            end
+    
+            return true
+        end
+    
+    
+        if not verifyIntegrity() then
             return
         end
-        
-        local enteredKey = keyInput.Text
-        
     
-        local keyValid = false
-        
     
-        if #enteredKey == #CORRECT_KEY then
-            local match = true
-            for i = 1, #CORRECT_KEY do
-                if string.byte(enteredKey, i) ~= string.byte(CORRECT_KEY, i) then
-                    match = false
+        spawn(function()
+            while true do
+                wait(CHECK_INTERVAL)
+                if not verifyIntegrity() then
                     break
                 end
             end
-            keyValid = match
+        end)
+        local lastActivityTime = tick()
+        local keyVerified = false
+    
+        local screenGui = script.Parent
+        screenGui.IgnoreGuiInset = true
+        screenGui.ResetOnSpawn = false
+    
+        local effectsContainer = Instance.new("Frame")
+        effectsContainer.Name = "EffectsContainer"
+        effectsContainer.BackgroundTransparency = 1
+        effectsContainer.Size = UDim2.new(1, 0, 1, 0)
+        effectsContainer.ZIndex = 0
+        effectsContainer.Parent = screenGui
+    
+        local blurEffect = Instance.new("BlurEffect")
+        blurEffect.Size = 0
+        blurEffect.Parent = game:GetService("Lighting")
+    
+        local mainContainer = Instance.new("Frame")
+        mainContainer.Name = "MainContainer"
+        mainContainer.AnchorPoint = Vector2.new(0.5, 0.5)
+        mainContainer.Position = UDim2.new(0.5, 0, 0.5, 0)
+        mainContainer.Size = UDim2.new(1, 0, 1, 0)
+        mainContainer.BackgroundColor3 = Color3.fromRGB(20, 20, 30)
+        mainContainer.BackgroundTransparency = 0
+        mainContainer.BorderSizePixel = 0
+        mainContainer.ZIndex = 1
+        mainContainer.Parent = screenGui
+    
+        local backgroundGradient = Instance.new("UIGradient")
+        backgroundGradient.Color = ColorSequence.new({
+            ColorSequenceKeypoint.new(0, Color3.fromRGB(30, 30, 45)),
+            ColorSequenceKeypoint.new(1, Color3.fromRGB(15, 15, 25))
+        })
+        backgroundGradient.Rotation = 45
+        print("About to parent backgroundGradient to:", mainContainer and mainContainer:GetFullName() or "no parent")
+        local success, err = pcall(function()
+            backgroundGradient.Parent = mainContainer
+        end)
+        if not success then
+            warn("Failed to parent backgroundGradient:", err)
+            return
         end
-        
-        if keyValid then
-            statusLabel.Text = "Key Verified! Access Granted."
-            statusLabel.TextColor3 = Color3.fromRGB(80, 255, 120)
-            keyVerified = true
+        print("Successfully parented backgroundGradient")
     
-            local sound = Instance.new("Sound")
-            sound.SoundId = "rbxassetid://6895079853"
-            sound.Volume = 0.5
-            sound.Parent = screenGui
-            sound:Play()
+        local keyPanel = Instance.new("Frame")
+        keyPanel.Name = "KeyPanel"
+        keyPanel.AnchorPoint = Vector2.new(0.5, 0.5)
+        keyPanel.Position = UDim2.new(0.5, 0, 0.5, 0)
+        keyPanel.Size = UDim2.new(0, 0, 0, 0)
+        keyPanel.BackgroundColor3 = Color3.fromRGB(35, 35, 50)
+        keyPanel.BorderSizePixel = 0
+        keyPanel.ZIndex = 2
+        print("About to parent keyPanel to:", mainContainer and mainContainer:GetFullName() or "no parent")
+        local success, err = pcall(function()
+            keyPanel.Parent = mainContainer
+        end)
+        if not success then
+            warn("Failed to parent keyPanel:", err)
+            return
+        end
+        print("Successfully parented keyPanel")
     
-            for i = 1, 50 do
+        local panelCorner = Instance.new("UICorner")
+        panelCorner.CornerRadius = UDim.new(0, 12)
+        print("About to parent panelCorner to:", keyPanel and keyPanel:GetFullName() or "no parent")
+        local success, err = pcall(function()
+            panelCorner.Parent = keyPanel
+        end)
+        if not success then
+            warn("Failed to parent panelCorner:", err)
+            return
+        end
+        print("Successfully parented panelCorner")
+    
+        local panelStroke = Instance.new("UIStroke")
+        panelStroke.Color = Color3.fromRGB(100, 100, 255)
+        panelStroke.Thickness = 2
+        panelStroke.Transparency = 0.2
+        panelStroke.Parent = keyPanel
+    
+        local panelGradient = Instance.new("UIGradient")
+        panelGradient.Color = ColorSequence.new({
+            ColorSequenceKeypoint.new(0, Color3.fromRGB(45, 45, 65)),
+            ColorSequenceKeypoint.new(1, Color3.fromRGB(35, 35, 50))
+        })
+        panelGradient.Rotation = 30
+        panelGradient.Parent = keyPanel
+    
+        local titleLabel = Instance.new("TextLabel")
+        titleLabel.Name = "TitleLabel"
+        titleLabel.AnchorPoint = Vector2.new(0.5, 0)
+        titleLabel.Position = UDim2.new(0.5, 0, 0.05, 0)
+        titleLabel.Size = UDim2.new(0.9, 0, 0.15, 0)
+        titleLabel.BackgroundTransparency = 1
+        titleLabel.Font = Enum.Font.GothamBold
+        titleLabel.Text = "Key System"
+        titleLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+        titleLabel.TextSize = 28
+        titleLabel.TextTransparency = 0
+        titleLabel.ZIndex = 3
+        titleLabel.Parent = keyPanel
+    
+        local subtitleLabel = Instance.new("TextLabel")
+        subtitleLabel.Name = "SubtitleLabel"
+        subtitleLabel.AnchorPoint = Vector2.new(0.5, 0)
+        subtitleLabel.Position = UDim2.new(0.5, 0, 0.2, 0)
+        subtitleLabel.Size = UDim2.new(0.9, 0, 0.1, 0)
+        subtitleLabel.BackgroundTransparency = 1
+        subtitleLabel.Font = Enum.Font.Gotham
+        subtitleLabel.Text = "Enter your access key to continue"
+        subtitleLabel.TextColor3 = Color3.fromRGB(200, 200, 220)
+        subtitleLabel.TextSize = 16
+        subtitleLabel.TextTransparency = 0
+        subtitleLabel.ZIndex = 3
+        subtitleLabel.Parent = keyPanel
+    
+        local inputContainer = Instance.new("Frame")
+        inputContainer.Name = "InputContainer"
+        inputContainer.AnchorPoint = Vector2.new(0.5, 0)
+        inputContainer.Position = UDim2.new(0.5, 0, 0.35, 0)
+        inputContainer.Size = UDim2.new(0.8, 0, 0.15, 0)
+        inputContainer.BackgroundColor3 = Color3.fromRGB(25, 25, 35)
+        inputContainer.BorderSizePixel = 0
+        inputContainer.ZIndex = 3
+        inputContainer.Parent = keyPanel
+    
+        local inputCorner = Instance.new("UICorner")
+        inputCorner.CornerRadius = UDim.new(0, 8)
+        inputCorner.Parent = inputContainer
+    
+        local inputStroke = Instance.new("UIStroke")
+        inputStroke.Color = Color3.fromRGB(80, 80, 120)
+        inputStroke.Thickness = 2
+        inputStroke.Transparency = 0.5
+        inputStroke.Parent = inputContainer
+    
+        local keyInput = Instance.new("TextBox")
+        keyInput.Name = "KeyInput"
+        keyInput.AnchorPoint = Vector2.new(0.5, 0.5)
+        keyInput.Position = UDim2.new(0.5, 0, 0.5, 0)
+        keyInput.Size = UDim2.new(0.95, 0, 0.8, 0)
+        keyInput.BackgroundTransparency = 1
+        keyInput.Font = Enum.Font.GothamSemibold
+        keyInput.PlaceholderText = "Enter Key..."
+        keyInput.PlaceholderColor3 = Color3.fromRGB(120, 120, 150)
+        keyInput.Text = ""
+        keyInput.TextColor3 = Color3.fromRGB(255, 255, 255)
+        keyInput.TextSize = 18
+        keyInput.ClearTextOnFocus = false
+        keyInput.ZIndex = 4
+        keyInput.Parent = inputContainer
+    
+        local submitButton = Instance.new("TextButton")
+        submitButton.Name = "SubmitButton"
+        submitButton.AnchorPoint = Vector2.new(0.5, 0)
+        submitButton.Position = UDim2.new(0.5, 0, 0.55, 0)
+        submitButton.Size = UDim2.new(0.8, 0, 0.15, 0)
+        submitButton.BackgroundColor3 = Color3.fromRGB(70, 70, 255)
+        submitButton.BorderSizePixel = 0
+        submitButton.Font = Enum.Font.GothamBold
+        submitButton.Text = "VERIFY"
+        submitButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+        submitButton.TextSize = 18
+        submitButton.AutoButtonColor = false
+        submitButton.ZIndex = 3
+        submitButton.Parent = keyPanel
+    
+        local buttonCorner = Instance.new("UICorner")
+        buttonCorner.CornerRadius = UDim.new(0, 8)
+        buttonCorner.Parent = submitButton
+    
+        local buttonGradient = Instance.new("UIGradient")
+        buttonGradient.Color = ColorSequence.new({
+            ColorSequenceKeypoint.new(0, Color3.fromRGB(100, 100, 255)),
+            ColorSequenceKeypoint.new(1, Color3.fromRGB(70, 70, 255))
+        })
+        buttonGradient.Rotation = 30
+        buttonGradient.Parent = submitButton
+    
+        local statusLabel = Instance.new("TextLabel")
+        statusLabel.Name = "StatusLabel"
+        statusLabel.AnchorPoint = Vector2.new(0.5, 0)
+        statusLabel.Position = UDim2.new(0.5, 0, 0.75, 0)
+        statusLabel.Size = UDim2.new(0.9, 0, 0.1, 0)
+        statusLabel.BackgroundTransparency = 1
+        statusLabel.Font = Enum.Font.Gotham
+        statusLabel.Text = ""
+        statusLabel.TextColor3 = Color3.fromRGB(200, 200, 220)
+        statusLabel.TextSize = 16
+        statusLabel.TextTransparency = 0
+        statusLabel.ZIndex = 3
+        statusLabel.Parent = keyPanel
+    
+        local afkTimerContainer = Instance.new("Frame")
+        afkTimerContainer.Name = "AfkTimerContainer"
+        afkTimerContainer.AnchorPoint = Vector2.new(0.5, 1)
+        afkTimerContainer.Position = UDim2.new(0.5, 0, 0.95, 0)
+        afkTimerContainer.Size = UDim2.new(0.8, 0, 0.05, 0)
+        afkTimerContainer.BackgroundColor3 = Color3.fromRGB(30, 30, 40)
+        afkTimerContainer.BorderSizePixel = 0
+        afkTimerContainer.Visible = true
+        afkTimerContainer.ZIndex = 3
+        afkTimerContainer.Parent = keyPanel
+    
+        local afkTimerCorner = Instance.new("UICorner")
+        afkTimerCorner.CornerRadius = UDim.new(0, 4)
+        afkTimerCorner.Parent = afkTimerContainer
+    
+        local afkTimerBar = Instance.new("Frame")
+        afkTimerBar.Name = "AfkTimerBar"
+        afkTimerBar.Position = UDim2.new(0, 0, 0, 0)
+        afkTimerBar.Size = UDim2.new(1, 0, 1, 0)
+        afkTimerBar.BackgroundColor3 = Color3.fromRGB(80, 80, 255)
+        afkTimerBar.BorderSizePixel = 0
+        afkTimerBar.ZIndex = 3
+        afkTimerBar.Parent = afkTimerContainer
+    
+        local afkTimerBarCorner = Instance.new("UICorner")
+        afkTimerBarCorner.CornerRadius = UDim.new(0, 4)
+        afkTimerBarCorner.Parent = afkTimerBar
+    
+        local afkTimerGradient = Instance.new("UIGradient")
+        afkTimerGradient.Color = ColorSequence.new({
+            ColorSequenceKeypoint.new(0, Color3.fromRGB(100, 100, 255)),
+            ColorSequenceKeypoint.new(1, Color3.fromRGB(80, 80, 255))
+        })
+        afkTimerGradient.Rotation = 90
+        afkTimerGradient.Parent = afkTimerBar
+    
+        local afkTimerLabel = Instance.new("TextLabel")
+        afkTimerLabel.Name = "AfkTimerLabel"
+        afkTimerLabel.AnchorPoint = Vector2.new(0.5, 0.5)
+        afkTimerLabel.Position = UDim2.new(0.5, 0, 0.5, 0)
+        afkTimerLabel.Size = UDim2.new(0.95, 0, 0.8, 0)
+        afkTimerLabel.BackgroundTransparency = 1
+        afkTimerLabel.Font = Enum.Font.GothamSemibold
+        afkTimerLabel.Text = "AFK Timer: 10:00"
+        afkTimerLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+        afkTimerLabel.TextSize = 14
+        afkTimerLabel.ZIndex = 4
+        afkTimerLabel.Parent = afkTimerContainer
+    
+        local function createParticles()
+            for i = 1, 30 do
                 local particle = Instance.new("Frame")
-                particle.BackgroundColor3 = Color3.fromRGB(80, 255, 120)
+                particle.BackgroundColor3 = Color3.fromRGB(100, 100, 255)
                 particle.BackgroundTransparency = 0.7
                 particle.BorderSizePixel = 0
-                particle.Size = UDim2.new(0, math.random(5, 10), 0, math.random(5, 10))
-                particle.Position = UDim2.new(0.5, 0, 0.5, 0)
-                particle.AnchorPoint = Vector2.new(0.5, 0.5)
-                particle.ZIndex = 5
+                particle.Size = UDim2.new(0, math.random(3, 5), 0, math.random(3, 5))
+                particle.Position = UDim2.new(math.random(), 0, math.random(), 0)
+                particle.ZIndex = 1
     
                 local corner = Instance.new("UICorner")
                 corner.CornerRadius = UDim.new(1, 0)
                 corner.Parent = particle
     
-                particle.Parent = keyPanel
+                particle.Parent = effectsContainer
     
                 spawn(function()
-                    local angle = math.random(0, 360) * (math.pi / 180)
-                    local distance = math.random(30, 100) / 100
+                    while particle.Parent do
+                        local randomMovement = Vector2.new(
+                            math.random(-50, 50) / 1000,
+                            math.random(-50, 50) / 1000
+                        )
     
-                    local targetPos = UDim2.new(
-                        0.5 + math.cos(angle) * distance,
-                        0,
-                        0.5 + math.sin(angle) * distance,
-                        0
+                        local newPosition = UDim2.new(
+                            math.clamp(particle.Position.X.Scale + randomMovement.X, 0, 1),
+                            0,
+                            math.clamp(particle.Position.Y.Scale + randomMovement.Y, 0, 1),
+                            0
+                        )
+    
+                        local tween = TweenService:Create(
+                            particle,
+                            TweenInfo.new(math.random(3, 6), Enum.EasingStyle.Sine, Enum.EasingDirection.InOut),
+                            {Position = newPosition}
+                        )
+    
+                        tween:Play()
+                        wait(math.random(2, 5))
+                    end
+                end)
+            end
+        end
+    
+        local function formatTime(seconds)
+            local minutes = math.floor(seconds / 60)
+            local remainingSeconds = seconds % 60
+            return string.format("%02d:%02d", minutes, remainingSeconds)
+        end
+    
+        local function updateAfkTimer()
+            spawn(function()
+                while not keyVerified do
+                    local timeLeft = AFK_TIME_LIMIT - (tick() - lastActivityTime)
+                    if timeLeft <= 0 then
+                        timeLeft = 0
+                    end
+    
+                    local progress = timeLeft / AFK_TIME_LIMIT
+                    afkTimerBar.Size = UDim2.new(progress, 0, 1, 0)
+    
+                    local r = math.min(255, math.floor(255 * (1 - progress) + 80 * progress))
+                    local g = math.min(255, math.floor(80 * progress))
+                    local b = math.min(255, math.floor(255 * progress))
+    
+                    afkTimerBar.BackgroundColor3 = Color3.fromRGB(r, g, b)
+                    afkTimerLabel.Text = "AFK Timer: " .. formatTime(timeLeft)
+    
+                    wait(1)
+                end
+            end)
+        end
+    
+        local function verifyKey()
+    
+            if not checkScriptIntegrity() then
+                return
+            end
+    
+            local enteredKey = keyInput.Text
+    
+    
+            local keyValid = false
+    
+    
+            if #enteredKey == #CORRECT_KEY then
+                local match = true
+                for i = 1, #CORRECT_KEY do
+                    if string.byte(enteredKey, i) ~= string.byte(CORRECT_KEY, i) then
+                        match = false
+                        break
+                    end
+                end
+                keyValid = match
+            end
+    
+            if keyValid then
+                statusLabel.Text = "Key Verified! Access Granted."
+                statusLabel.TextColor3 = Color3.fromRGB(80, 255, 120)
+                keyVerified = true
+    
+                local sound = Instance.new("Sound")
+                sound.SoundId = "rbxassetid://6895079853"
+                sound.Volume = 0.5
+                sound.Parent = screenGui
+                sound:Play()
+    
+                for i = 1, 50 do
+                    local particle = Instance.new("Frame")
+                    particle.BackgroundColor3 = Color3.fromRGB(80, 255, 120)
+                    particle.BackgroundTransparency = 0.7
+                    particle.BorderSizePixel = 0
+                    particle.Size = UDim2.new(0, math.random(5, 10), 0, math.random(5, 10))
+                    particle.Position = UDim2.new(0.5, 0, 0.5, 0)
+                    particle.AnchorPoint = Vector2.new(0.5, 0.5)
+                    particle.ZIndex = 5
+    
+                    local corner = Instance.new("UICorner")
+                    corner.CornerRadius = UDim.new(1, 0)
+                    corner.Parent = particle
+    
+                    particle.Parent = keyPanel
+    
+                    spawn(function()
+                        local angle = math.random(0, 360) * (math.pi / 180)
+                        local distance = math.random(30, 100) / 100
+    
+                        local targetPos = UDim2.new(
+                            0.5 + math.cos(angle) * distance,
+                            0,
+                            0.5 + math.sin(angle) * distance,
+                            0
+                        )
+    
+                        local tween = TweenService:Create(
+                            particle,
+                            TweenInfo.new(0.8, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
+                            {
+                                Position = targetPos,
+                                BackgroundTransparency = 1,
+                                Size = UDim2.new(0, 0, 0, 0)
+                            }
+                        )
+    
+                        tween:Play()
+                        tween.Completed:Connect(function()
+                            particle:Destroy()
+                        end)
+                    end)
+                end
+    
+                submitButton.BackgroundColor3 = Color3.fromRGB(80, 255, 120)
+                buttonGradient.Color = ColorSequence.new({
+                    ColorSequenceKeypoint.new(0, Color3.fromRGB(100, 255, 140)),
+                    ColorSequenceKeypoint.new(1, Color3.fromRGB(80, 255, 120))
+                })
+                submitButton.Text = "ACCESS GRANTED"
+    
+                panelStroke.Color = Color3.fromRGB(80, 255, 120)
+    
+                wait(1.5)
+    
+                local blurTween = TweenService:Create(blurEffect, TweenInfo.new(1, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
+                    Size = 20
+                })
+                blurTween:Play()
+    
+                local rotateTween = TweenService:Create(keyPanel, TweenInfo.new(0.8, Enum.EasingStyle.Back, Enum.EasingDirection.In), {
+                    Rotation = 15,
+                    AnchorPoint = Vector2.new(0.5, 0.5)
+                })
+    
+                local shrinkTween = TweenService:Create(keyPanel, TweenInfo.new(1, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
+                    Size = UDim2.new(0, 0, 0, 0),
+                    Position = UDim2.new(0.5, 0, 0.5, 0),
+                    BackgroundTransparency = 1
+                })
+    
+                rotateTween:Play()
+                wait(0.3)
+                shrinkTween:Play()
+    
+                local bgFade = TweenService:Create(mainContainer, TweenInfo.new(1.5, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
+                    BackgroundTransparency = 1
+                })
+                bgFade:Play()
+    
+                wait(1.5)
+                blurEffect:Destroy()
+                screenGui:Destroy()
+            else
+                statusLabel.Text = "Invalid Key! Try Again."
+                statusLabel.TextColor3 = Color3.fromRGB(255, 80, 80)
+    
+                local sound = Instance.new("Sound")
+                sound.SoundId = "rbxassetid://6895079712"
+                sound.Volume = 0.5
+                sound.Parent = screenGui
+                sound:Play()
+    
+                for i = 1, 20 do
+                    local particle = Instance.new("Frame")
+                    particle.BackgroundColor3 = Color3.fromRGB(255, 80, 80)
+                    particle.BackgroundTransparency = 0.7
+                    particle.BorderSizePixel = 0
+                    particle.Size = UDim2.new(0, math.random(3, 7), 0, math.random(3, 7))
+                    particle.Position = UDim2.new(0.5, 0, 0.5, 0)
+                    particle.AnchorPoint = Vector2.new(0.5, 0.5)
+                    particle.ZIndex = 5
+    
+                    local corner = Instance.new("UICorner")
+                    corner.CornerRadius = UDim.new(1, 0)
+                    corner.Parent = particle
+    
+                    particle.Parent = keyPanel
+    
+                    spawn(function()
+                        local angle = math.random(0, 360) * (math.pi / 180)
+                        local distance = math.random(5, 15) / 100
+    
+                        local targetPos = UDim2.new(
+                            0.5 + math.cos(angle) * distance,
+                            0,
+                            0.5 + math.sin(angle) * distance,
+                            0
+                        )
+    
+                        local tween = TweenService:Create(
+                            particle,
+                            TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
+                            {
+                                Position = targetPos,
+                                BackgroundTransparency = 1
+                            }
+                        )
+    
+                        tween:Play()
+                        tween.Completed:Connect(function()
+                            particle:Destroy()
+                        end)
+                    end)
+                end
+    
+                local originalPosition = keyPanel.Position
+                local shakeIntensity = 10
+    
+                for i = 1, 5 do
+                    keyPanel.Position = originalPosition + UDim2.new(0, math.random(-shakeIntensity, shakeIntensity), 0, math.random(-shakeIntensity, shakeIntensity))
+                    wait(0.05)
+                end
+    
+                keyPanel.Position = originalPosition
+    
+                local originalColor = inputStroke.Color
+                inputStroke.Color = Color3.fromRGB(255, 80, 80)
+                wait(0.5)
+                inputStroke.Color = originalColor
+            end
+    
+            lastActivityTime = tick() 
+        end
+    
+        submitButton.MouseEnter:Connect(function()
+            TweenService:Create(submitButton, TweenInfo.new(0.3), {
+                BackgroundColor3 = Color3.fromRGB(90, 90, 255),
+                Size = UDim2.new(0.82, 0, 0.16, 0)
+            }):Play()
+        end)
+    
+        submitButton.MouseLeave:Connect(function()
+            TweenService:Create(submitButton, TweenInfo.new(0.3), {
+                BackgroundColor3 = Color3.fromRGB(70, 70, 255),
+                Size = UDim2.new(0.8, 0, 0.15, 0)
+            }):Play()
+        end)
+    
+        submitButton.MouseButton1Click:Connect(function()
+            TweenService:Create(submitButton, TweenInfo.new(0.1), {
+                Size = UDim2.new(0.78, 0, 0.14, 0)
+            }):Play()
+    
+            wait(0.1)
+    
+            TweenService:Create(submitButton, TweenInfo.new(0.1), {
+                Size = UDim2.new(0.8, 0, 0.15, 0)
+            }):Play()
+    
+            verifyKey()
+        end)
+    
+        keyInput.FocusLost:Connect(function(enterPressed)
+            if enterPressed then
+                verifyKey()
+            end
+    
+            lastActivityTime = tick()
+        end)
+    
+        keyInput.Focused:Connect(function()
+            TweenService:Create(inputStroke, TweenInfo.new(0.3), {
+                Color = Color3.fromRGB(100, 100, 255),
+                Transparency = 0
+            }):Play()
+        end)
+    
+        keyInput.FocusLost:Connect(function()
+            TweenService:Create(inputStroke, TweenInfo.new(0.3), {
+                Color = Color3.fromRGB(80, 80, 120),
+                Transparency = 0.5
+            }):Play()
+        end)
+    
+        local function updateActivity()
+            lastActivityTime = tick()
+        end
+    
+        UserInputService.InputBegan:Connect(updateActivity)
+        UserInputService.InputEnded:Connect(updateActivity)
+        UserInputService.InputChanged:Connect(updateActivity)
+    
+        local function checkAFK()
+            while wait(5) do 
+                if not keyVerified and tick() - lastActivityTime >= AFK_TIME_LIMIT then
+    
+                    local warningPanel = Instance.new("Frame")
+                    warningPanel.Name = "WarningPanel"
+                    warningPanel.AnchorPoint = Vector2.new(0.5, 0.5)
+                    warningPanel.Position = UDim2.new(0.5, 0, 0.5, 0)
+                    warningPanel.Size = UDim2.new(0, 400, 0, 200)
+                    warningPanel.BackgroundColor3 = Color3.fromRGB(40, 10, 10)
+                    warningPanel.BorderSizePixel = 0
+                    warningPanel.ZIndex = 10
+                    warningPanel.Parent = screenGui
+    
+                    local warningCorner = Instance.new("UICorner")
+                    warningCorner.CornerRadius = UDim.new(0, 12)
+                    warningCorner.Parent = warningPanel
+    
+                    local warningStroke = Instance.new("UIStroke")
+                    warningStroke.Color = Color3.fromRGB(255, 80, 80)
+                    warningStroke.Thickness = 3
+                    warningStroke.Parent = warningPanel
+    
+                    local warningIcon = Instance.new("TextLabel")
+                    warningIcon.Name = "WarningIcon"
+                    warningIcon.AnchorPoint = Vector2.new(0.5, 0)
+                    warningIcon.Position = UDim2.new(0.5, 0, 0.1, 0)
+                    warningIcon.Size = UDim2.new(0.15, 0, 0.3, 0)
+                    warningIcon.BackgroundTransparency = 1
+                    warningIcon.Font = Enum.Font.GothamBold
+                    warningIcon.Text = "⚠"
+                    warningIcon.TextColor3 = Color3.fromRGB(255, 80, 80)
+                    warningIcon.TextSize = 42
+                    warningIcon.ZIndex = 11
+                    warningIcon.Parent = warningPanel
+    
+                    local warningTitle = Instance.new("TextLabel")
+                    warningTitle.Name = "WarningTitle"
+                    warningTitle.AnchorPoint = Vector2.new(0.5, 0)
+                    warningTitle.Position = UDim2.new(0.5, 0, 0.35, 0)
+                    warningTitle.Size = UDim2.new(0.9, 0, 0.15, 0)
+                    warningTitle.BackgroundTransparency = 1
+                    warningTitle.Font = Enum.Font.GothamBold
+                    warningTitle.Text = "AFK WARNING"
+                    warningTitle.TextColor3 = Color3.fromRGB(255, 255, 255)
+                    warningTitle.TextSize = 24
+                    warningTitle.ZIndex = 11
+                    warningTitle.Parent = warningPanel
+    
+                    local warningMessage = Instance.new("TextLabel")
+                    warningMessage.Name = "WarningMessage"
+                    warningMessage.AnchorPoint = Vector2.new(0.5, 0)
+                    warningMessage.Position = UDim2.new(0.5, 0, 0.5, 0)
+                    warningMessage.Size = UDim2.new(0.9, 0, 0.2, 0)
+                    warningMessage.BackgroundTransparency = 1
+                    warningMessage.Font = Enum.Font.Gotham
+                    warningMessage.Text = "You will be kicked for inactivity in:"
+                    warningMessage.TextColor3 = Color3.fromRGB(255, 255, 255)
+                    warningMessage.TextSize = 18
+                    warningMessage.ZIndex = 11
+                    warningMessage.Parent = warningPanel
+    
+                    local countdownText = Instance.new("TextLabel")
+                    countdownText.Name = "CountdownText"
+                    countdownText.AnchorPoint = Vector2.new(0.5, 0)
+                    countdownText.Position = UDim2.new(0.5, 0, 0.7, 0)
+                    countdownText.Size = UDim2.new(0.3, 0, 0.2, 0)
+                    countdownText.BackgroundTransparency = 1
+                    countdownText.Font = Enum.Font.GothamBold
+                    countdownText.Text = "10"
+                    countdownText.TextColor3 = Color3.fromRGB(255, 80, 80)
+                    countdownText.TextSize = 36
+                    countdownText.ZIndex = 11
+                    countdownText.Parent = warningPanel
+    
+                    warningPanel.Size = UDim2.new(0, 0, 0, 0)
+                    warningPanel.BackgroundTransparency = 1
+                    warningStroke.Transparency = 1
+    
+                    local warningEntrance = TweenService:Create(
+                        warningPanel,
+                        TweenInfo.new(0.4, Enum.EasingStyle.Back, Enum.EasingDirection.Out),
+                        {
+                            Size = UDim2.new(0, 400, 0, 200),
+                            BackgroundTransparency = 0
+                        }
                     )
     
-                    local tween = TweenService:Create(
-                        particle,
+                    local strokeAppear = TweenService:Create(
+                        warningStroke,
+                        TweenInfo.new(0.4, Enum.EasingStyle.Quad),
+                        {
+                            Transparency = 0
+                        }
+                    )
+    
+                    warningEntrance:Play()
+                    strokeAppear:Play()
+    
+                    for i = 10, 1, -1 do
+                        if tick() - lastActivityTime < AFK_TIME_LIMIT then
+    
+                            local warningExit = TweenService:Create(
+                                warningPanel,
+                                TweenInfo.new(0.3, Enum.EasingStyle.Back, Enum.EasingDirection.In),
+                                {
+                                    Size = UDim2.new(0, 0, 0, 0),
+                                    BackgroundTransparency = 1
+                                }
+                            )
+    
+                            local strokeFade = TweenService:Create(
+                                warningStroke,
+                                TweenInfo.new(0.3, Enum.EasingStyle.Quad),
+                                {
+                                    Transparency = 1
+                                }
+                            )
+    
+                            warningExit:Play()
+                            strokeFade:Play()
+                            wait(0.3)
+                            warningPanel:Destroy()
+                            break
+                        end
+    
+                        countdownText.Text = tostring(i)
+    
+                        local pulse = TweenService:Create(
+                            countdownText,
+                            TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
+                            {
+                                TextSize = 44
+                            }
+                        )
+    
+                        local unpulse = TweenService:Create(
+                            countdownText,
+                            TweenInfo.new(0.5, Enum.EasingStyle.Quad, Enum.EasingDirection.InOut),
+                            {
+                                TextSize = 36
+                            }
+                        )
+    
+                        pulse:Play()
+                        wait(0.2)
+                        unpulse:Play()
+                        wait(0.8)
+                    end
+    
+                    if warningPanel.Parent and tick() - lastActivityTime >= AFK_TIME_LIMIT then
+                        local fullScreenRed = Instance.new("Frame")
+                        fullScreenRed.Size = UDim2.new(1, 0, 1, 0)
+                        fullScreenRed.BackgroundColor3 = Color3.fromRGB(255, 0, 0)
+                        fullScreenRed.BackgroundTransparency = 1
+                        fullScreenRed.BorderSizePixel = 0
+                        fullScreenRed.ZIndex = 999
+                        fullScreenRed.Parent = screenGui
+    
+                        local redFlash = TweenService:Create(
+                            fullScreenRed,
+                            TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
+                            {
+                                BackgroundTransparency = 0.3
+                            }
+                        )
+    
+                        redFlash:Play()
+                        wait(0.5)
+                        player:Kick("You were kicked for being AFK for too long.")
+                    else
+                        if warningPanel.Parent then
+                            local warningExit = TweenService:Create(
+                                warningPanel,
+                                TweenInfo.new(0.3, Enum.EasingStyle.Back, Enum.EasingDirection.In),
+                                {
+                                    Size = UDim2.new(0, 0, 0, 0),
+                                    BackgroundTransparency = 1
+                                }
+                            )
+    
+                            local strokeFade = TweenService:Create(
+                                warningStroke,
+                                TweenInfo.new(0.3, Enum.EasingStyle.Quad),
+                                {
+                                    Transparency = 1
+                                }
+                            )
+    
+                            warningExit:Play()
+                            strokeFade:Play()
+                            wait(0.3)
+                            warningPanel:Destroy()
+                        end
+                    end
+                end
+            end
+        end
+    
+        local function floatingCardEffect()
+            local originalPosition = keyPanel.Position
+    
+            while keyPanel.Parent and not keyVerified do
+                local offset = 5
+                local duration = 3
+    
+                local floatUp = TweenService:Create(
+                    keyPanel,
+                    TweenInfo.new(duration, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut),
+                    {
+                        Position = originalPosition - UDim2.new(0, 0, 0, offset)
+                    }
+                )
+    
+                local floatDown = TweenService:Create(
+                    keyPanel,
+                    TweenInfo.new(duration, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut),
+                    {
+                        Position = originalPosition + UDim2.new(0, 0, 0, offset)
+                    }
+                )
+    
+                floatUp:Play()
+                wait(duration)
+                if not keyPanel.Parent then break end
+    
+                floatDown:Play()
+                wait(duration)
+                if not keyPanel.Parent then break end
+            end
+        end
+    
+        local function animateBackground()
+            spawn(function()
+                local rotation = 0
+    
+                while mainContainer.Parent do
+                    rotation = (rotation + 0.1) % 360
+                    backgroundGradient.Rotation = rotation
+                    wait(0.05)
+                end
+            end)
+        end
+    
+        keyInput.Changed:Connect(function(property)
+            if property == "Text" then
+    
+                lastActivityTime = tick()
+    
+                local typingParticle = Instance.new("Frame")
+                typingParticle.BackgroundColor3 = Color3.fromRGB(100, 100, 255)
+                typingParticle.BackgroundTransparency = 0.7
+                typingParticle.BorderSizePixel = 0
+                typingParticle.Size = UDim2.new(0, 4, 0, 4)
+                typingParticle.Position = UDim2.new(math.random(0.1, 0.9), 0, 0.35 + math.random(-5, 5)/100, 0)
+                typingParticle.ZIndex = 5
+    
+                local corner = Instance.new("UICorner")
+                corner.CornerRadius = UDim.new(1, 0)
+                corner.Parent = typingParticle
+    
+                typingParticle.Parent = keyPanel
+    
+    
+                spawn(function()
+                    local targetY = math.random(20, 60) / 100
+    
+                    local particleTween = TweenService:Create(
+                        typingParticle,
                         TweenInfo.new(0.8, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
                         {
-                            Position = targetPos,
+                            Position = UDim2.new(typingParticle.Position.X.Scale, 0, targetY, 0),
                             BackgroundTransparency = 1,
                             Size = UDim2.new(0, 0, 0, 0)
                         }
                     )
     
-                    tween:Play()
-                    tween.Completed:Connect(function()
-                        particle:Destroy()
+                    particleTween:Play()
+                    particleTween.Completed:Connect(function()
+                        typingParticle:Destroy()
                     end)
                 end)
-            end
-    
-            submitButton.BackgroundColor3 = Color3.fromRGB(80, 255, 120)
-            buttonGradient.Color = ColorSequence.new({
-                ColorSequenceKeypoint.new(0, Color3.fromRGB(100, 255, 140)),
-                ColorSequenceKeypoint.new(1, Color3.fromRGB(80, 255, 120))
-            })
-            submitButton.Text = "ACCESS GRANTED"
-    
-            panelStroke.Color = Color3.fromRGB(80, 255, 120)
-    
-            wait(1.5)
-    
-            local blurTween = TweenService:Create(blurEffect, TweenInfo.new(1, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
-                Size = 20
-            })
-            blurTween:Play()
-    
-            local rotateTween = TweenService:Create(keyPanel, TweenInfo.new(0.8, Enum.EasingStyle.Back, Enum.EasingDirection.In), {
-                Rotation = 15,
-                AnchorPoint = Vector2.new(0.5, 0.5)
-            })
-    
-            local shrinkTween = TweenService:Create(keyPanel, TweenInfo.new(1, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
-                Size = UDim2.new(0, 0, 0, 0),
-                Position = UDim2.new(0.5, 0, 0.5, 0),
-                BackgroundTransparency = 1
-            })
-    
-            rotateTween:Play()
-            wait(0.3)
-            shrinkTween:Play()
-    
-            local bgFade = TweenService:Create(mainContainer, TweenInfo.new(1.5, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
-                BackgroundTransparency = 1
-            })
-            bgFade:Play()
-    
-            wait(1.5)
-            blurEffect:Destroy()
-            screenGui:Destroy()
-        else
-            statusLabel.Text = "Invalid Key! Try Again."
-            statusLabel.TextColor3 = Color3.fromRGB(255, 80, 80)
-    
-            local sound = Instance.new("Sound")
-            sound.SoundId = "rbxassetid://6895079712"
-            sound.Volume = 0.5
-            sound.Parent = screenGui
-            sound:Play()
-    
-            for i = 1, 20 do
-                local particle = Instance.new("Frame")
-                particle.BackgroundColor3 = Color3.fromRGB(255, 80, 80)
-                particle.BackgroundTransparency = 0.7
-                particle.BorderSizePixel = 0
-                particle.Size = UDim2.new(0, math.random(3, 7), 0, math.random(3, 7))
-                particle.Position = UDim2.new(0.5, 0, 0.5, 0)
-                particle.AnchorPoint = Vector2.new(0.5, 0.5)
-                particle.ZIndex = 5
-    
-                local corner = Instance.new("UICorner")
-                corner.CornerRadius = UDim.new(1, 0)
-                corner.Parent = particle
-    
-                particle.Parent = keyPanel
-    
-                spawn(function()
-                    local angle = math.random(0, 360) * (math.pi / 180)
-                    local distance = math.random(5, 15) / 100
-    
-                    local targetPos = UDim2.new(
-                        0.5 + math.cos(angle) * distance,
-                        0,
-                        0.5 + math.sin(angle) * distance,
-                        0
-                    )
-    
-                    local tween = TweenService:Create(
-                        particle,
-                        TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
-                        {
-                            Position = targetPos,
-                            BackgroundTransparency = 1
-                        }
-                    )
-    
-                    tween:Play()
-                    tween.Completed:Connect(function()
-                        particle:Destroy()
-                    end)
-                end)
-            end
-    
-            local originalPosition = keyPanel.Position
-            local shakeIntensity = 10
-    
-            for i = 1, 5 do
-                keyPanel.Position = originalPosition + UDim2.new(0, math.random(-shakeIntensity, shakeIntensity), 0, math.random(-shakeIntensity, shakeIntensity))
-                wait(0.05)
-            end
-    
-            keyPanel.Position = originalPosition
-    
-            local originalColor = inputStroke.Color
-            inputStroke.Color = Color3.fromRGB(255, 80, 80)
-            wait(0.5)
-            inputStroke.Color = originalColor
-        end
-    
-        lastActivityTime = tick() 
-    end
-    
-    submitButton.MouseEnter:Connect(function()
-        TweenService:Create(submitButton, TweenInfo.new(0.3), {
-            BackgroundColor3 = Color3.fromRGB(90, 90, 255),
-            Size = UDim2.new(0.82, 0, 0.16, 0)
-        }):Play()
-    end)
-    
-    submitButton.MouseLeave:Connect(function()
-        TweenService:Create(submitButton, TweenInfo.new(0.3), {
-            BackgroundColor3 = Color3.fromRGB(70, 70, 255),
-            Size = UDim2.new(0.8, 0, 0.15, 0)
-        }):Play()
-    end)
-    
-    submitButton.MouseButton1Click:Connect(function()
-        TweenService:Create(submitButton, TweenInfo.new(0.1), {
-            Size = UDim2.new(0.78, 0, 0.14, 0)
-        }):Play()
-    
-        wait(0.1)
-    
-        TweenService:Create(submitButton, TweenInfo.new(0.1), {
-            Size = UDim2.new(0.8, 0, 0.15, 0)
-        }):Play()
-    
-        verifyKey()
-    end)
-    
-    keyInput.FocusLost:Connect(function(enterPressed)
-        if enterPressed then
-            verifyKey()
-        end
-    
-        lastActivityTime = tick()
-    end)
-    
-    keyInput.Focused:Connect(function()
-        TweenService:Create(inputStroke, TweenInfo.new(0.3), {
-            Color = Color3.fromRGB(100, 100, 255),
-            Transparency = 0
-        }):Play()
-    end)
-    
-    keyInput.FocusLost:Connect(function()
-        TweenService:Create(inputStroke, TweenInfo.new(0.3), {
-            Color = Color3.fromRGB(80, 80, 120),
-            Transparency = 0.5
-        }):Play()
-    end)
-    
-    local function updateActivity()
-        lastActivityTime = tick()
-    end
-    
-    UserInputService.InputBegan:Connect(updateActivity)
-    UserInputService.InputEnded:Connect(updateActivity)
-    UserInputService.InputChanged:Connect(updateActivity)
-    
-    local function checkAFK()
-        while wait(5) do 
-            if not keyVerified and tick() - lastActivityTime >= AFK_TIME_LIMIT then
-    
-                local warningPanel = Instance.new("Frame")
-                warningPanel.Name = "WarningPanel"
-                warningPanel.AnchorPoint = Vector2.new(0.5, 0.5)
-                warningPanel.Position = UDim2.new(0.5, 0, 0.5, 0)
-                warningPanel.Size = UDim2.new(0, 400, 0, 200)
-                warningPanel.BackgroundColor3 = Color3.fromRGB(40, 10, 10)
-                warningPanel.BorderSizePixel = 0
-                warningPanel.ZIndex = 10
-                warningPanel.Parent = screenGui
-    
-                local warningCorner = Instance.new("UICorner")
-                warningCorner.CornerRadius = UDim.new(0, 12)
-                warningCorner.Parent = warningPanel
-    
-                local warningStroke = Instance.new("UIStroke")
-                warningStroke.Color = Color3.fromRGB(255, 80, 80)
-                warningStroke.Thickness = 3
-                warningStroke.Parent = warningPanel
-    
-                local warningIcon = Instance.new("TextLabel")
-                warningIcon.Name = "WarningIcon"
-                warningIcon.AnchorPoint = Vector2.new(0.5, 0)
-                warningIcon.Position = UDim2.new(0.5, 0, 0.1, 0)
-                warningIcon.Size = UDim2.new(0.15, 0, 0.3, 0)
-                warningIcon.BackgroundTransparency = 1
-                warningIcon.Font = Enum.Font.GothamBold
-                warningIcon.Text = "⚠"
-                warningIcon.TextColor3 = Color3.fromRGB(255, 80, 80)
-                warningIcon.TextSize = 42
-                warningIcon.ZIndex = 11
-                warningIcon.Parent = warningPanel
-    
-                local warningTitle = Instance.new("TextLabel")
-                warningTitle.Name = "WarningTitle"
-                warningTitle.AnchorPoint = Vector2.new(0.5, 0)
-                warningTitle.Position = UDim2.new(0.5, 0, 0.35, 0)
-                warningTitle.Size = UDim2.new(0.9, 0, 0.15, 0)
-                warningTitle.BackgroundTransparency = 1
-                warningTitle.Font = Enum.Font.GothamBold
-                warningTitle.Text = "AFK WARNING"
-                warningTitle.TextColor3 = Color3.fromRGB(255, 255, 255)
-                warningTitle.TextSize = 24
-                warningTitle.ZIndex = 11
-                warningTitle.Parent = warningPanel
-    
-                local warningMessage = Instance.new("TextLabel")
-                warningMessage.Name = "WarningMessage"
-                warningMessage.AnchorPoint = Vector2.new(0.5, 0)
-                warningMessage.Position = UDim2.new(0.5, 0, 0.5, 0)
-                warningMessage.Size = UDim2.new(0.9, 0, 0.2, 0)
-                warningMessage.BackgroundTransparency = 1
-                warningMessage.Font = Enum.Font.Gotham
-                warningMessage.Text = "You will be kicked for inactivity in:"
-                warningMessage.TextColor3 = Color3.fromRGB(255, 255, 255)
-                warningMessage.TextSize = 18
-                warningMessage.ZIndex = 11
-                warningMessage.Parent = warningPanel
-    
-                local countdownText = Instance.new("TextLabel")
-                countdownText.Name = "CountdownText"
-                countdownText.AnchorPoint = Vector2.new(0.5, 0)
-                countdownText.Position = UDim2.new(0.5, 0, 0.7, 0)
-                countdownText.Size = UDim2.new(0.3, 0, 0.2, 0)
-                countdownText.BackgroundTransparency = 1
-                countdownText.Font = Enum.Font.GothamBold
-                countdownText.Text = "10"
-                countdownText.TextColor3 = Color3.fromRGB(255, 80, 80)
-                countdownText.TextSize = 36
-                countdownText.ZIndex = 11
-                countdownText.Parent = warningPanel
-    
-                warningPanel.Size = UDim2.new(0, 0, 0, 0)
-                warningPanel.BackgroundTransparency = 1
-                warningStroke.Transparency = 1
-    
-                local warningEntrance = TweenService:Create(
-                    warningPanel,
-                    TweenInfo.new(0.4, Enum.EasingStyle.Back, Enum.EasingDirection.Out),
-                    {
-                        Size = UDim2.new(0, 400, 0, 200),
-                        BackgroundTransparency = 0
-                    }
-                )
-    
-                local strokeAppear = TweenService:Create(
-                    warningStroke,
-                    TweenInfo.new(0.4, Enum.EasingStyle.Quad),
-                    {
-                        Transparency = 0
-                    }
-                )
-    
-                warningEntrance:Play()
-                strokeAppear:Play()
-    
-                for i = 10, 1, -1 do
-                    if tick() - lastActivityTime < AFK_TIME_LIMIT then
-    
-                        local warningExit = TweenService:Create(
-                            warningPanel,
-                            TweenInfo.new(0.3, Enum.EasingStyle.Back, Enum.EasingDirection.In),
-                            {
-                                Size = UDim2.new(0, 0, 0, 0),
-                                BackgroundTransparency = 1
-                            }
-                        )
-    
-                        local strokeFade = TweenService:Create(
-                            warningStroke,
-                            TweenInfo.new(0.3, Enum.EasingStyle.Quad),
-                            {
-                                Transparency = 1
-                            }
-                        )
-    
-                        warningExit:Play()
-                        strokeFade:Play()
-                        wait(0.3)
-                        warningPanel:Destroy()
-                        break
-                    end
-    
-                    countdownText.Text = tostring(i)
-    
-                    local pulse = TweenService:Create(
-                        countdownText,
-                        TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
-                        {
-                            TextSize = 44
-                        }
-                    )
-    
-                    local unpulse = TweenService:Create(
-                        countdownText,
-                        TweenInfo.new(0.5, Enum.EasingStyle.Quad, Enum.EasingDirection.InOut),
-                        {
-                            TextSize = 36
-                        }
-                    )
-    
-                    pulse:Play()
-                    wait(0.2)
-                    unpulse:Play()
-                    wait(0.8)
-                end
-    
-                if warningPanel.Parent and tick() - lastActivityTime >= AFK_TIME_LIMIT then
-                    local fullScreenRed = Instance.new("Frame")
-                    fullScreenRed.Size = UDim2.new(1, 0, 1, 0)
-                    fullScreenRed.BackgroundColor3 = Color3.fromRGB(255, 0, 0)
-                    fullScreenRed.BackgroundTransparency = 1
-                    fullScreenRed.BorderSizePixel = 0
-                    fullScreenRed.ZIndex = 999
-                    fullScreenRed.Parent = screenGui
-    
-                    local redFlash = TweenService:Create(
-                        fullScreenRed,
-                        TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
-                        {
-                            BackgroundTransparency = 0.3
-                        }
-                    )
-    
-                    redFlash:Play()
-                    wait(0.5)
-                    player:Kick("You were kicked for being AFK for too long.")
-                else
-                    if warningPanel.Parent then
-                        local warningExit = TweenService:Create(
-                            warningPanel,
-                            TweenInfo.new(0.3, Enum.EasingStyle.Back, Enum.EasingDirection.In),
-                            {
-                                Size = UDim2.new(0, 0, 0, 0),
-                                BackgroundTransparency = 1
-                            }
-                        )
-    
-                        local strokeFade = TweenService:Create(
-                            warningStroke,
-                            TweenInfo.new(0.3, Enum.EasingStyle.Quad),
-                            {
-                                Transparency = 1
-                            }
-                        )
-    
-                        warningExit:Play()
-                        strokeFade:Play()
-                        wait(0.3)
-                        warningPanel:Destroy()
-                    end
-                end
-            end
-        end
-    end
-    
-    local function floatingCardEffect()
-        local originalPosition = keyPanel.Position
-    
-        while keyPanel.Parent and not keyVerified do
-            local offset = 5
-            local duration = 3
-    
-            local floatUp = TweenService:Create(
-                keyPanel,
-                TweenInfo.new(duration, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut),
-                {
-                    Position = originalPosition - UDim2.new(0, 0, 0, offset)
-                }
-            )
-    
-            local floatDown = TweenService:Create(
-                keyPanel,
-                TweenInfo.new(duration, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut),
-                {
-                    Position = originalPosition + UDim2.new(0, 0, 0, offset)
-                }
-            )
-    
-            floatUp:Play()
-            wait(duration)
-            if not keyPanel.Parent then break end
-    
-            floatDown:Play()
-            wait(duration)
-            if not keyPanel.Parent then break end
-        end
-    end
-    
-    local function animateBackground()
-        spawn(function()
-            local rotation = 0
-    
-            while mainContainer.Parent do
-                rotation = (rotation + 0.1) % 360
-                backgroundGradient.Rotation = rotation
-                wait(0.05)
             end
         end)
-    end
     
-    keyInput.Changed:Connect(function(property)
-        if property == "Text" then
+        local function createLogo()
+            local logoContainer = Instance.new("Frame")
+            logoContainer.Name = "LogoContainer"
+            logoContainer.AnchorPoint = Vector2.new(0.5, 0)
+            logoContainer.Position = UDim2.new(0.5, 0, 0.85, 0)
+            logoContainer.Size = UDim2.new(0.5, 0, 0.07, 0)
+            logoContainer.BackgroundTransparency = 1
+            logoContainer.ZIndex = 3
+            logoContainer.Parent = keyPanel
     
-            lastActivityTime = tick()
+            local logoText = Instance.new("TextLabel")
+            logoText.Name = "LogoText"
+            logoText.AnchorPoint = Vector2.new(0.5, 0.5)
+            logoText.Position = UDim2.new(0.5, 0, 0.5, 0)
+            logoText.Size = UDim2.new(1, 0, 1, 0)
+            logoText.BackgroundTransparency = 1
+            logoText.Font = Enum.Font.GothamBold
+            logoText.Text = "KEY SYSTEM"
+            logoText.TextColor3 = Color3.fromRGB(100, 100, 255)
+            logoText.TextSize = 14
+            logoText.TextTransparency = 0.5
+            logoText.ZIndex = 3
+            logoText.Parent = logoContainer
     
-            local typingParticle = Instance.new("Frame")
-            typingParticle.BackgroundColor3 = Color3.fromRGB(100, 100, 255)
-            typingParticle.BackgroundTransparency = 0.7
-            typingParticle.BorderSizePixel = 0
-            typingParticle.Size = UDim2.new(0, 4, 0, 4)
-            typingParticle.Position = UDim2.new(math.random(0.1, 0.9), 0, 0.35 + math.random(-5, 5)/100, 0)
-            typingParticle.ZIndex = 5
-    
-            local corner = Instance.new("UICorner")
-            corner.CornerRadius = UDim.new(1, 0)
-            corner.Parent = typingParticle
-    
-            typingParticle.Parent = keyPanel
-    
-            
             spawn(function()
-                local targetY = math.random(20, 60) / 100
+                while logoText.Parent do
+                    local fadeOut = TweenService:Create(
+                        logoText,
+                        TweenInfo.new(2, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut),
+                        {
+                            TextTransparency = 0.8
+                        }
+                    )
     
-                local particleTween = TweenService:Create(
-                    typingParticle,
-                    TweenInfo.new(0.8, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
-                    {
-                        Position = UDim2.new(typingParticle.Position.X.Scale, 0, targetY, 0),
-                        BackgroundTransparency = 1,
-                        Size = UDim2.new(0, 0, 0, 0)
-                    }
-                )
+                    local fadeIn = TweenService:Create(
+                        logoText,
+                        TweenInfo.new(2, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut),
+                        {
+                            TextTransparency = 0.5
+                        }
+                    )
     
-                particleTween:Play()
-                particleTween.Completed:Connect(function()
-                    typingParticle:Destroy()
-                end)
+                    fadeOut:Play()
+                    wait(2)
+                    fadeIn:Play()
+                    wait(2)
+                end
             end)
         end
-    end)
     
-    local function createLogo()
-        local logoContainer = Instance.new("Frame")
-        logoContainer.Name = "LogoContainer"
-        logoContainer.AnchorPoint = Vector2.new(0.5, 0)
-        logoContainer.Position = UDim2.new(0.5, 0, 0.85, 0)
-        logoContainer.Size = UDim2.new(0.5, 0, 0.07, 0)
-        logoContainer.BackgroundTransparency = 1
-        logoContainer.ZIndex = 3
-        logoContainer.Parent = keyPanel
-    
-        local logoText = Instance.new("TextLabel")
-        logoText.Name = "LogoText"
-        logoText.AnchorPoint = Vector2.new(0.5, 0.5)
-        logoText.Position = UDim2.new(0.5, 0, 0.5, 0)
-        logoText.Size = UDim2.new(1, 0, 1, 0)
-        logoText.BackgroundTransparency = 1
-        logoText.Font = Enum.Font.GothamBold
-        logoText.Text = "KEY SYSTEM"
-        logoText.TextColor3 = Color3.fromRGB(100, 100, 255)
-        logoText.TextSize = 14
-        logoText.TextTransparency = 0.5
-        logoText.ZIndex = 3
-        logoText.Parent = logoContainer
-    
-        spawn(function()
-            while logoText.Parent do
-                local fadeOut = TweenService:Create(
-                    logoText,
-                    TweenInfo.new(2, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut),
-                    {
-                        TextTransparency = 0.8
-                    }
-                )
-    
-                local fadeIn = TweenService:Create(
-                    logoText,
-                    TweenInfo.new(2, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut),
-                    {
-                        TextTransparency = 0.5
-                    }
-                )
-    
-                fadeOut:Play()
-                wait(2)
-                fadeIn:Play()
-                wait(2)
+        local function initializeSystem()
+            print("Initializing system...")
+            
+            if not checkScriptIntegrity() then
+                print("Integrity check failed!")
+                return
             end
-        end)
-    end
+            
     
-    local function initializeSystem()
+            if not script.Parent then
     
-        if not checkScriptIntegrity() then
-            return
-        end
-        
-    
-        spawn(function()
-            while true do
-                wait(INTEGRITY_CHECK_INTERVAL)
-                if not checkScriptIntegrity() then
-                    break
+                local success, err = pcall(function()
+                    local playerGui = player:WaitForChild("PlayerGui")
+                    script.Parent = playerGui
+                end)
+                if not success then
+                    warn("Failed to set script parent:", err)
+                    return
                 end
             end
-        end)
-        
-        blurEffect.Size = 0
-        local initialBlur = TweenService:Create(blurEffect, TweenInfo.new(1, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
-            Size = 10
-        })
-        initialBlur:Play()
+            
+            print("Script parent:", script.Parent and script.Parent:GetFullName() or "none")
     
-        
-        keyPanel.Size = UDim2.new(0, 0, 0, 0)
-        keyPanel.BackgroundTransparency = 1
-        panelStroke.Transparency = 1
     
-        
-        for _, child in pairs(keyPanel:GetChildren()) do
-            if child:IsA("TextLabel") or child:IsA("TextButton") or child:IsA("Frame") then
-                child.BackgroundTransparency = 1
+            spawn(function()
+                while true do
+                    wait(INTEGRITY_CHECK_INTERVAL)
+                    if not checkScriptIntegrity() then
+                        break
+                    end
+                end
+            end)
+    
+            blurEffect.Size = 0
+            local initialBlur = TweenService:Create(blurEffect, TweenInfo.new(1, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+                Size = 10
+            })
+            initialBlur:Play()
+    
+    
+            keyPanel.Size = UDim2.new(0, 0, 0, 0)
+            keyPanel.BackgroundTransparency = 1
+            panelStroke.Transparency = 1
+    
+    
+            for _, child in pairs(keyPanel:GetChildren()) do
+                if child:IsA("TextLabel") or child:IsA("TextButton") or child:IsA("Frame") then
+                    child.BackgroundTransparency = 1
+                    if child:IsA("TextLabel") or child:IsA("TextButton") then
+                        child.TextTransparency = 1
+                    end
+                end
+            end
+    
+            wait(0.5)
+            local panelGrow = TweenService:Create(
+                keyPanel,
+                TweenInfo.new(0.8, Enum.EasingStyle.Back, Enum.EasingDirection.Out),
+                {
+                    Size = UDim2.new(0, 400, 0, 300),
+                    BackgroundTransparency = 0
+                }
+            )
+    
+            local strokeAppear = TweenService:Create(
+                panelStroke,
+                TweenInfo.new(1, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
+                {
+                    Transparency = 0.2
+                }
+            )
+    
+            panelGrow:Play()
+            strokeAppear:Play()
+    
+            wait(0.6)
+            for _, child in pairs(keyPanel:GetChildren()) do
                 if child:IsA("TextLabel") or child:IsA("TextButton") then
-                    child.TextTransparency = 1
-                end
-            end
-        end
+                    TweenService:Create(
+                        child,
+                        TweenInfo.new(0.5, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
+                        {
+                            TextTransparency = 0
+                        }
+                    ):Play()
     
-        wait(0.5)
-        local panelGrow = TweenService:Create(
-            keyPanel,
-            TweenInfo.new(0.8, Enum.EasingStyle.Back, Enum.EasingDirection.Out),
-            {
-                Size = UDim2.new(0, 400, 0, 300),
-                BackgroundTransparency = 0
-            }
-        )
-    
-        local strokeAppear = TweenService:Create(
-            panelStroke,
-            TweenInfo.new(1, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
-            {
-                Transparency = 0.2
-            }
-        )
-    
-        panelGrow:Play()
-        strokeAppear:Play()
-    
-        wait(0.6)
-        for _, child in pairs(keyPanel:GetChildren()) do
-            if child:IsA("TextLabel") or child:IsA("TextButton") then
-                TweenService:Create(
-                    child,
-                    TweenInfo.new(0.5, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
-                    {
-                        TextTransparency = 0
-                    }
-                ):Play()
-    
-                if child.BackgroundTransparency < 1 then
+                    if child.BackgroundTransparency < 1 then
+                        TweenService:Create(
+                            child,
+                            TweenInfo.new(0.5, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
+                            {
+                                BackgroundTransparency = 0
+                            }
+                        ):Play()
+                    end
+                elseif child:IsA("Frame") and child.BackgroundTransparency < 1 then
                     TweenService:Create(
                         child,
                         TweenInfo.new(0.5, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
@@ -1108,32 +1204,36 @@
                         }
                     ):Play()
                 end
-            elseif child:IsA("Frame") and child.BackgroundTransparency < 1 then
-                TweenService:Create(
-                    child,
-                    TweenInfo.new(0.5, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
-                    {
-                        BackgroundTransparency = 0
-                    }
-                ):Play()
+    
+                wait(0.05)
             end
     
-            wait(0.05)
+            createParticles()
+            animateBackground()
+    
+            spawn(floatingCardEffect)
+    
+            createLogo()
+    
+            updateAfkTimer()
+    
+            spawn(checkAFK)
         end
     
-        createParticles()
-        animateBackground()
     
-        spawn(floatingCardEffect)
+    local success, err = pcall(function()
     
-        createLogo()
+        if not initializeGUI() then
+            error("Failed to initialize GUI")
+        end
+        
     
-        updateAfkTimer()
+        initializeSystem()
+    end)
     
-        spawn(checkAFK)
+    if not success then
+        warn("Failed to start key system:", err)
     end
-    
-    initializeSystem()
     
 </body>
 </html>
